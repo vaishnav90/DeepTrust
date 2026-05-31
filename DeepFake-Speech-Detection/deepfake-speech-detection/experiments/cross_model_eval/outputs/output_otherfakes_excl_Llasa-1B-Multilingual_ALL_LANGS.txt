@@ -1,0 +1,65 @@
+COMMAND: /usr/bin/python3 -u /content/deepfake-speech-detection/HM-Conformer/hm_conformer/main.py
+START: 21:28:05
+
+
+============================================================
+HM-Conformer Run Info
+============================================================
+TEST mode:           True
+Selected language:   None
+Selected fake model: None
+Exclude fake models: ['Llasa-1B-Multilingual']
+labels_path:         /content/deepfake-speech-detection/HM-Conformer/dataset/labels.json
+dataset_root:        /content/deepfake-speech-detection/HM-Conformer/dataset
+path_params:         /content/deepfake-speech-detection/HM-Conformer/results/Multilingual-Domain-Training/HM-Conformer_Llasa_1B_Multilingual/models
+load_epoch:          10
+usable_gpu:          0
+world_size:          1
+batch_size (per GPU):120
+============================================================
+
+Excluded fake samples by model_or_speaker in: [Llasa-1B-Multilingual] (kept all real samples)
+Total entries before fake-model exclusion: 304000
+Total entries after fake-model exclusion:  298000
+====================
+  MultilingualDataset
+Language: All languages
+Fake model filter: (none) | Exclude fake models: Llasa-1B-Multilingual
+====================
+TRAIN: Real=0, Fake=0, Total=0
+VAL:   Real=0, Fake=0, Total=0
+TEST:  Real=152,000, Fake=146,000, Total=298,000
+Class weights: Real=1.0000, Fake=1.0000
+====================
+
+============================================================
+Test Results
+============================================================
+EER:           36.2682%
+Accuracy:      0.7209
+F1 Score:      0.6024
+Precision:     0.9973
+Recall:        0.4316
+ROC AUC:       0.7152
+Threshold:     1.0000
+
+Confusion Matrix:
+[[151828    172]
+ [ 82991  63009]]
+
+Classification Report:
+              precision    recall  f1-score   support
+
+        Real       0.65      1.00      0.79    152000
+        Fake       1.00      0.43      0.60    146000
+
+    accuracy                           0.72    298000
+   macro avg       0.82      0.72      0.69    298000
+weighted avg       0.82      0.72      0.70    298000
+
+============================================================
+
+DF:  36.26820219469414
+
+END: 21:38:13
+EXIT_CODE: 0

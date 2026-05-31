@@ -1,0 +1,743 @@
+import { useState, useRef, useEffect } from "react";
+import { videoDetection } from "@/api/video/videoDetection";
+import { audioDetection } from "@/api/audio/audioDetection";
+import { imageDetection } from "../api/image/imageDetection";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Camera, Mic, ShieldCheck, ShieldAlert, Loader2, Square, ScanLine, Image as ImageIcon } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+
+type ScanStatus = "idle" | "recording" | "recorded" | "scanning" | "complete";
+type ScanResult = "authentic" | "fake" | null;
+type CaptureMode = "video" | "audio" | "photo";
+
+interface ScannerProps {
+  onScanComplete: (result: { status: ScanResult; timestamp: Date; resultId?: string }) => void;
+  embedded?: boolean;
+}
+
+export default function Scanner({ onScanComplete, embedded = false }: ScannerProps) {
+
+  const [scanStatus, setScanStatus] = useState<ScanStatus>("idle");
+  const [scanResult, setScanResult] = useState<ScanResult>(null);
+  const [lastAnalysis, setLastAnalysis] = useState<{ classification?: string; score?: number | null } | null>(null);
+  const [stream, setStream] = useState<MediaStream | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const [hasPermissions, setHasPermissions] = useState(false);
+  const [captureMode, setCaptureMode] = useState<CaptureMode>("video");
+  const [recordedVideo, setRecordedVideo] = useState<string | null>(null);
+  const [recordedImage, setRecordedImage] = useState<string | null>(null);
+  const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const navigate = useNavigate();
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const { toast } = useToast();
+
+  const toNumericId = (value: unknown): number | null => {
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+    if (typeof value === "string") {
+      const parsed = Number.parseInt(value, 10);
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+    return null;
+  };
+
+  const toStatusFromClassification = (value: unknown): ScanResult => {
+    if (typeof value !== "string") return null;
+    const v = value.trim().toLowerCase();
+    if (!v) return null;
+    if (v.includes("bonafide") || v.includes("bona fide") || v.includes("bona-fide")) return "authentic";
+    if (v.includes("auth") || v.includes("real") || v.includes("genuine")) return "authentic";
+    if (v.includes("deepfake") || v.includes("fake") || v.includes("manip")) return "fake";
+    return null;
+  };
+
+  const formatMaybePercent = (value: unknown): string | null => {
+    if (value === null || value === undefined) return null;
+    if (typeof value === "number" && Number.isFinite(value)) {
+      // Backend already returns a client-friendly 0..100 score.
+      return `${value.toFixed(2)}%`;
+    }
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      if (!trimmed) return null;
+      const numeric = Number(trimmed.replace("%", ""));
+      if (Number.isFinite(numeric)) {
+        return `${numeric.toFixed(2)}%`;
+      }
+      return trimmed;
+    }
+    return null;
+  };
+
+  useEffect(() => {
+    return () => {
+      const s = streamRef.current;
+      if (s) s.getTracks().forEach((track) => track.stop());
+    };
+  }, []);
+
+  const requestCameraPermissions = async () => {
+    try {
+      // Check if mediaDevices is available
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        toast({
+          title: "Not supported",
+          description: "Your browser doesn't support camera access. Please use a modern browser with HTTPS.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: captureMode === "photo" ? "environment" : "user" },
+        audio: captureMode === "video",
+      });
+
+      setStream(mediaStream);
+      streamRef.current = mediaStream;
+      setHasPermissions(true);
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = mediaStream;
+      }
+
+      toast({
+        title: "Access granted",
+        description: captureMode === "photo" ? "Camera is ready" : "Camera and microphone are ready",
+      });
+    } catch (error) {
+      console.error("Camera access error:", error);
+      
+      let errorMessage = "Please allow camera and microphone access in your browser settings";
+      
+      if (error instanceof Error) {
+        if (error.name === "NotAllowedError") {
+          errorMessage = "Permission denied. Please check your browser settings and allow camera/microphone access.";
+        } else if (error.name === "NotFoundError") {
+          errorMessage = "No camera or microphone found on your device.";
+        } else if (error.name === "NotReadableError") {
+          errorMessage = "Camera is already in use by another application.";
+        } else if (error.name === "SecurityError") {
+          errorMessage = "Camera access requires HTTPS. Please ensure you're using a secure connection.";
+        }
+      }
+      
+      toast({
+        title: "Camera access failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const requestAudioPermissions = async () => {
+    try {
+      const mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: false,
+        audio: true,
+      });
+
+      setStream(mediaStream);
+      streamRef.current = mediaStream;
+      setHasPermissions(true);
+
+      toast({
+        title: "Microphone access granted",
+        description: "Audio recording is ready",
+      });
+    } catch (error) {
+      toast({
+        title: "Permission denied",
+        description: "Please allow microphone access",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const requestPermissions = async () => {
+    if (captureMode === "video" || captureMode === "photo") {
+      await requestCameraPermissions();
+    } else if (captureMode === "audio") {
+      await requestAudioPermissions();
+    }
+  };
+
+  const takePhoto = async () => {
+    if (!hasPermissions) {
+      await requestPermissions();
+      return;
+    }
+
+    if (!videoRef.current) return;
+    const video = videoRef.current;
+    const w = video.videoWidth;
+    const h = video.videoHeight;
+    if (!w || !h) {
+      toast({
+        title: "Capture failed",
+        description: "Camera stream not ready yet.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      toast({
+        title: "Capture failed",
+        description: "Could not capture image.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    ctx.drawImage(video, 0, 0, w, h);
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
+    if (!blob) {
+      toast({
+        title: "Capture failed",
+        description: "Could not encode captured image.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (recordedImage) URL.revokeObjectURL(recordedImage);
+    const url = URL.createObjectURL(blob);
+    setRecordedImage(url);
+    setRecordedVideo(null);
+    setRecordedBlob(blob);
+    setScanStatus("recorded");
+
+    toast({
+      title: "Photo captured",
+      description: "Your photo is ready for analysis",
+    });
+  };
+
+  const startRecording = async () => {
+    if (!hasPermissions) {
+      await requestPermissions();
+      return;
+    }
+
+    if (!stream) return;
+
+    try {
+      // Determine MIME type based on mode
+      const mimeType = captureMode === "video"
+        ? (MediaRecorder.isTypeSupported("video/webm;codecs=vp9")
+          ? "video/webm;codecs=vp9"
+          : MediaRecorder.isTypeSupported("video/webm")
+            ? "video/webm"
+            : "video/mp4")
+        : (MediaRecorder.isTypeSupported("audio/webm")
+          ? "audio/webm"
+          : MediaRecorder.isTypeSupported("audio/mp4")
+            ? "audio/mp4"
+            : "audio/webm");
+
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType,
+        videoBitsPerSecond: captureMode === "video" ? 2500000 : undefined,
+        audioBitsPerSecond: 128000,
+      });
+
+      mediaRecorderRef.current = mediaRecorder;
+      chunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          chunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        setRecordedVideo(url);
+        if (recordedImage) URL.revokeObjectURL(recordedImage);
+        setRecordedImage(null);
+        setRecordedBlob(blob);
+        setScanStatus("recorded");
+        setIsProcessing(false);
+
+        toast({
+          title: "Recording completed",
+          description: "Your recording is ready for analysis",
+        });
+      };
+
+      mediaRecorder.onerror = (event) => {
+        console.error("MediaRecorder error:", event);
+        toast({
+          title: "Recording error",
+          description: "An error occurred while recording",
+          variant: "destructive",
+        });
+        setScanStatus("idle");
+        setIsProcessing(false);
+      };
+
+      mediaRecorder.start(1000);
+      setScanStatus("recording");
+
+      toast({
+        title: "Recording started",
+        description: "Recording in progress. Click stop when finished.",
+      });
+    } catch (error) {
+      console.error("Error starting recording:", error);
+      toast({
+        title: "Recording failed",
+        description: "Could not start recording",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      setIsProcessing(true);
+      mediaRecorderRef.current.stop();
+    }
+  };
+
+  const scanRecordedContent = async () => {
+    if (!recordedBlob) {
+      toast({
+        title: "No recording to scan",
+        description: captureMode === "photo" ? "Please take a photo first" : "Please record content first",
+        variant: "destructive",
+      });
+      return;
+    }
+  
+    setScanStatus("scanning");
+    setScanResult(null);
+  
+    try {
+      // Send the blob to backend based on capture mode
+      const response =
+        captureMode === "video"
+          ? await videoDetection.postVideo(recordedBlob)
+          : captureMode === "audio"
+            ? await audioDetection.postAudio(recordedBlob)
+            : await imageDetection.postImage(recordedBlob);
+  
+      const result = response.data;
+      const logId = toNumericId(result?.resultId ?? result?.id);
+      const status: ScanResult = result?.status ?? toStatusFromClassification(result?.classification);
+      setLastAnalysis({
+        classification: typeof result?.classification === "string" ? result.classification : undefined,
+        score: typeof result?.score === "number" ? result.score : null,
+      });
+
+      const verdictText =
+        status === "fake"
+          ? "This is potentially a Deepfake."
+          : status === "authentic"
+            ? "This looks good (Bonafide)."
+            : "Result received.";
+
+      const detailsParts: string[] = [];
+      const scoreText = formatMaybePercent(
+        result?.score
+      );
+      if (scoreText) detailsParts.push(`Score: ${scoreText}`);
+      if (typeof result?.classification === "string" && result.classification.trim()) {
+        detailsParts.push(`Classification: ${result.classification}`);
+      }
+      if (logId !== null) detailsParts.push(`Log #${logId}`);
+  
+      setScanResult(status);
+      setScanStatus("complete");
+  
+      onScanComplete({
+        status,
+        timestamp: new Date(),
+        resultId: logId !== null ? String(logId) : undefined,
+      });
+  
+      toast({
+        title:
+          typeof result?.classification === "string" && result.classification.trim()
+            ? result.classification
+            : status === "authentic"
+              ? "Bonafide"
+              : "Deepfake",
+        description:
+          detailsParts.length > 0
+            ? `${verdictText} ${detailsParts.join(" • ")}`
+            : verdictText,
+        variant: status === "fake" ? "destructive" : "success",
+        action: logId !== null ? (
+          <Button
+            variant="outline"
+            size="sm"
+            style={{ backgroundColor: "var(--primary)", color: "black" }}
+            onClick={() => navigate(`/scan_result/${logId}`)}
+          >
+            View Details
+          </Button>
+        ) : undefined,
+      });
+    } catch (error: unknown) {
+      console.error("Scan error:", error);
+  
+      const apiMessage =
+        typeof error === "object" && error
+          ? (error as { response?: { data?: { message?: unknown } } }).response?.data?.message
+          : undefined;
+      const errorMessage =
+        (typeof apiMessage === "string" && apiMessage.trim() ? apiMessage : undefined) ||
+        (error instanceof Error ? error.message : undefined) ||
+        "Could not analyze content. Please try again.";
+  
+      toast({
+        title: "Scan failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+  
+      setScanStatus("recorded"); // Go back to recorded state on error
+    }
+  };
+
+  const resetScan = () => {
+    setScanStatus("idle");
+    setScanResult(null);
+    setRecordedVideo(null);
+    setRecordedImage(null);
+    setRecordedBlob(null);
+
+    // Stop current stream
+    const s = streamRef.current;
+    if (s) s.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
+    setStream(null);
+    setHasPermissions(false);
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+
+    // Clean up recorded video URL
+    if (recordedVideo) {
+      URL.revokeObjectURL(recordedVideo);
+    }
+    if (recordedImage) {
+      URL.revokeObjectURL(recordedImage);
+    }
+  };
+
+  // Reset when switching modes
+  useEffect(() => {
+    const s = streamRef.current;
+    if (s) s.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
+    setStream(null);
+    setHasPermissions(false);
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    setRecordedVideo(null);
+    setRecordedImage(null);
+    setRecordedBlob(null);
+    setScanResult(null);
+    setScanStatus("idle");
+  }, [captureMode]);
+
+  const themedCardClass =
+    scanStatus === "complete" && scanResult
+      ? scanResult === "authentic"
+        ? "ring-2 ring-success/40 border-success/30"
+        : "ring-2 ring-destructive/40 border-destructive/30"
+      : "";
+
+  const wrapperClass = embedded
+    ? "flex flex-col items-center justify-center w-full space-y-6"
+    : "flex flex-col items-center justify-center min-h-[calc(100vh-8rem)] p-4 space-y-6";
+
+  return (
+    <div className={wrapperClass}>
+      {/* Mode Selector */}
+      <Tabs value={captureMode} onValueChange={(value) => setCaptureMode(value as CaptureMode)} className="w-full max-w-md">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="video" className="gap-2">
+            <Camera className="w-4 h-4" />
+            Video
+          </TabsTrigger>
+          <TabsTrigger value="audio" className="gap-2">
+            <Mic className="w-4 h-4" />
+            Audio
+          </TabsTrigger>
+          <TabsTrigger value="photo" className="gap-2">
+            <ImageIcon className="w-4 h-4" />
+            Photo
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
+
+      <Card className={`relative w-full max-w-md aspect-[3/4] overflow-hidden bg-card shadow-scanner ${themedCardClass}`}>
+        {/* Live Video Preview (only when recording or idle) */}
+        {(captureMode === "video" || captureMode === "photo") &&
+          scanStatus !== "recorded" &&
+          scanStatus !== "scanning" &&
+          scanStatus !== "complete" && (
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+        )}
+
+        {/* Audio-only visualization (only when idle, not when recording) */}
+        {captureMode === "audio" && hasPermissions && scanStatus === "idle" && (
+          <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-b from-primary/20 to-primary/5">
+            <div className="text-center space-y-4">
+              <div className="relative w-32 h-32 mx-auto">
+                <div className="absolute inset-0 rounded-full border-4 border-primary/30 animate-pulse" />
+                <div className="absolute inset-4 rounded-full border-4 border-primary/50 animate-pulse" style={{ animationDelay: '0.2s' }} />
+                <Mic className="w-16 h-16 text-primary absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
+              </div>
+              <p className="text-sm font-medium text-primary">Ready to Record</p>
+            </div>
+          </div>
+        )}
+
+        {/* Recorded Video Preview - Keep it visible during scanning and after */}
+        {scanStatus === "recorded" && recordedVideo && captureMode === "video" && (
+          <video
+            src={recordedVideo}
+            controls
+            className="absolute inset-0 w-full h-full object-cover"
+            autoPlay
+          />
+        )}
+
+        {scanStatus === "recorded" && recordedImage && captureMode === "photo" && (
+          <img src={recordedImage} alt="Captured photo" className="absolute inset-0 w-full h-full object-cover" />
+        )}
+
+        {/* Recorded Audio Preview */}
+        {scanStatus === "recorded" && recordedVideo && captureMode === "audio" && (
+          <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-b from-primary/20 to-primary/5">
+            <div className="text-center space-y-4">
+              <Mic className="w-20 h-20 text-primary" />
+              <p className="text-sm font-medium text-primary">Audio Recording</p>
+              <audio src={recordedVideo} controls className="w-full max-w-xs" />
+            </div>
+          </div>
+        )}
+
+        {/* Overlay when no permissions */}
+        {!hasPermissions && scanStatus === "idle" && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-card/95 backdrop-blur-sm">
+            <div className="flex gap-4 mb-4">
+              {captureMode === "video" ? (
+                <>
+                  <Camera className="w-12 h-12 text-muted-foreground" />
+                  <Mic className="w-12 h-12 text-muted-foreground" />
+                </>
+              ) : captureMode === "photo" ? (
+                <Camera className="w-12 h-12 text-muted-foreground" />
+              ) : (
+                <Mic className="w-12 h-12 text-muted-foreground" />
+              )}
+            </div>
+            <p className="text-sm text-muted-foreground text-center px-6">
+              {captureMode === "video"
+                ? "Camera and microphone access required"
+                : captureMode === "photo"
+                  ? "Camera access required"
+                : "Microphone access required for audio recording"}
+            </p>
+          </div>
+        )}
+
+        {/* Recording Overlay - Shows for both video and audio */}
+        {scanStatus === "recording" && (
+          <div className="absolute inset-0 bg-red-500/10 backdrop-blur-[1px]">
+            <div className="absolute inset-0 border-2 border-red-500 animate-pulse" />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="text-center space-y-2">
+                <div className="w-4 h-4 bg-red-500 rounded-full animate-pulse mx-auto" />
+                <p className="text-sm font-medium text-red-600">Recording...</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Scanning Overlay - Appears over the recorded video */}
+        {scanStatus === "scanning" && (
+          <div className="absolute inset-0 bg-primary/10 backdrop-blur-[1px] z-10">
+            <div className="absolute inset-0 border-2 border-primary animate-pulse" />
+            <div className="absolute left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-primary to-transparent animate-pulse" />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="text-center space-y-2">
+                <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto" />
+                <p className="text-sm font-medium text-primary">Analyzing content...</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Result Overlay - Appears over the recorded video after scanning */}
+        {scanStatus === "complete" && scanResult && (
+          <div className={`absolute inset-0 ${scanResult === "authentic" ? "bg-success/20" : "bg-destructive/20"} backdrop-blur-sm flex items-center justify-center z-10`}>
+            <div className="text-center space-y-4 p-6">
+              {scanResult === "authentic" ? (
+                <>
+                  <ShieldCheck className="w-20 h-20 text-success mx-auto" />
+                  <div>
+                    <h3 className="text-2xl font-bold text-success-foreground">Bonafide</h3>
+                    <p className="text-sm text-success-foreground/80 mt-2">
+                      {lastAnalysis?.score !== null && lastAnalysis?.score !== undefined
+                        ? `This looks good (Bonafide). Score: ${lastAnalysis.score.toFixed(2)}%`
+                        : "This looks good (Bonafide)."}
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <ShieldAlert className="w-20 h-20 text-destructive mx-auto" />
+                  <div>
+                    <h3 className="text-2xl font-bold text-destructive-foreground">Deepfake Detected</h3>
+                    <p className="text-sm text-destructive-foreground/80 mt-2">
+                      {lastAnalysis?.score !== null && lastAnalysis?.score !== undefined
+                        ? `This is potentially a Deepfake. Score: ${lastAnalysis.score.toFixed(2)}%`
+                        : "This is potentially a Deepfake."}
+                    </p>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Corner Indicators */}
+        {hasPermissions && scanStatus === "idle" && (
+          <>
+            <div className="absolute top-4 left-4 w-8 h-8 border-l-2 border-t-2 border-primary/40" />
+            <div className="absolute top-4 right-4 w-8 h-8 border-r-2 border-t-2 border-primary/40" />
+            <div className="absolute bottom-4 left-4 w-8 h-8 border-l-2 border-b-2 border-primary/40" />
+            <div className="absolute bottom-4 right-4 w-8 h-8 border-r-2 border-b-2 border-primary/40" />
+          </>
+        )}
+      </Card>
+
+      {/* Control Buttons */}
+      {scanStatus === "idle" && (
+        <Button
+          onClick={captureMode === "photo" ? takePhoto : startRecording}
+          size="lg"
+          className="w-full max-w-md h-14 bg-gradient-primary hover:opacity-90 text-white font-semibold text-lg shadow-glow"
+        >
+          {hasPermissions ? (
+            <>
+              {captureMode === "video" ? (
+                <>
+                  <Camera className="w-5 h-5 mr-2" />
+                  Start Recording
+                </>
+              ) : captureMode === "photo" ? (
+                <>
+                  <ImageIcon className="w-5 h-5 mr-2" />
+                  Take Photo
+                </>
+              ) : (
+                <>
+                  <Mic className="w-5 h-5 mr-2" />
+                  Start Recording
+                </>
+              )}
+            </>
+          ) : (
+            <>
+              {captureMode === "video" ? (
+                <>
+                  <Camera className="w-5 h-5 mr-2" />
+                  Enable Camera & Mic
+                </>
+              ) : captureMode === "photo" ? (
+                <>
+                  <Camera className="w-5 h-5 mr-2" />
+                  Enable Camera
+                </>
+              ) : (
+                <>
+                  <Mic className="w-5 h-5 mr-2" />
+                  Enable Microphone
+                </>
+              )}
+            </>
+          )}
+        </Button>
+      )}
+
+      {scanStatus === "recording" && (
+        <Button
+          onClick={stopRecording}
+          size="lg"
+          variant="destructive"
+          className="w-full max-w-md h-14 font-semibold text-lg"
+          disabled={isProcessing}
+        >
+          {isProcessing ? (
+            <>
+              <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+              Processing...
+            </>
+          ) : (
+            <>
+              <Square className="w-5 h-5 mr-2" />
+              Stop Recording
+            </>
+          )}
+        </Button>
+      )}
+
+      {scanStatus === "recorded" && (
+        <div className="w-full max-w-md space-y-3">
+          <Button
+            onClick={scanRecordedContent}
+            size="lg"
+            className="w-full h-14 bg-gradient-primary hover:opacity-90 text-white font-semibold text-lg"
+          >
+            <ScanLine className="w-5 h-5 mr-2" />
+            Scan for Deepfakes
+          </Button>
+          <Button
+            onClick={resetScan}
+            size="lg"
+            variant="secondary"
+            className="w-full h-14 font-semibold text-lg"
+          >
+            Record Again
+          </Button>
+        </div>
+      )}
+
+      {scanStatus === "complete" && (
+        <Button
+          onClick={resetScan}
+          size="lg"
+          variant="secondary"
+          className="w-full max-w-md h-14 font-semibold text-lg"
+        >
+          Scan Again
+        </Button>
+      )}
+    </div>
+  );
+}

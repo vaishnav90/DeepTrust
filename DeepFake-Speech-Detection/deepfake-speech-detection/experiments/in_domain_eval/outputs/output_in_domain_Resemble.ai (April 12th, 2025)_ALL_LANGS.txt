@@ -1,0 +1,65 @@
+COMMAND: /usr/bin/python3 -u /content/deepfake-speech-detection/HM-Conformer/hm_conformer/main.py
+START: 06:19:20
+
+
+============================================================
+HM-Conformer Run Info
+============================================================
+TEST mode:           True
+Selected language:   None
+Selected fake model: Resemble.ai (April 12th, 2025)
+Exclude fake models: None
+labels_path:         /content/deepfake-speech-detection/HM-Conformer/dataset/labels.json
+dataset_root:        /content/deepfake-speech-detection/HM-Conformer/dataset
+path_params:         /content/deepfake-speech-detection/HM-Conformer/results/Multilingual-Domain-Training/HM-Conformer_Resemble_ai_April_12th_2025/models
+load_epoch:          10
+usable_gpu:          0
+world_size:          1
+batch_size (per GPU):120
+============================================================
+
+Filtered fake samples by model_or_speaker: 'Resemble.ai (April 12th, 2025)' (kept all real samples)
+Total entries before fake-model filtering: 304000
+Total entries after fake-model filtering:  157000
+====================
+  MultilingualDataset
+Language: All languages
+Fake model filter: Resemble.ai (April 12th, 2025)
+====================
+TRAIN: Real=0, Fake=0, Total=0
+VAL:   Real=0, Fake=0, Total=0
+TEST:  Real=152,000, Fake=5,000, Total=157,000
+Class weights: Real=1.0000, Fake=1.0000
+====================
+
+============================================================
+Test Results
+============================================================
+EER:           0.1157%
+Accuracy:      0.9989
+F1 Score:      0.9827
+Precision:     0.9660
+Recall:        1.0000
+ROC AUC:       0.9994
+Threshold:     1.0000
+
+Confusion Matrix:
+[[151824    176]
+ [     0   5000]]
+
+Classification Report:
+              precision    recall  f1-score   support
+
+        Real       1.00      1.00      1.00    152000
+        Fake       0.97      1.00      0.98      5000
+
+    accuracy                           1.00    157000
+   macro avg       0.98      1.00      0.99    157000
+weighted avg       1.00      1.00      1.00    157000
+
+============================================================
+
+DF:  0.11565555672379353
+
+END: 06:22:55
+EXIT_CODE: 0

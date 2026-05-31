@@ -1,0 +1,46 @@
+TEST: False
+load_epoch: 10
+epoch: 10
+batch_size: 120
+rand_seed: 1
+bin_size: 120
+output_size: 128
+input_layer: conv2d2
+pos_enc_layer_type: rel_pos
+linear_units: 256
+cnn_module_kernel: 15
+dropout: 0.75
+emb_dropout: 0.3
+use_pooling: False
+input_mean_std: False
+embedding_size: 64
+num_class: 1
+feat_dim: 2
+r_real: 0.9
+r_fake: 0.2
+alpha: 20.0
+loss_weight: [0.4, 0.3, 0.2, 0.1, 0.1]
+sample_rate: 16000
+n_lfcc: 40
+coef: 0.97
+n_fft: 512
+win_length: 320
+hop: 160
+with_delta: True
+with_emphasis: True
+with_energy: True
+train_crop_size: 64000
+test_crop_size: 64000
+DA_codec_speed: True
+DA_p: 0.5
+DA_list: []
+DA_params: {'MUS': {'path': '/content/deepfake-speech-detection/HM-Conformer/data/musan'}, 'RIR': {'path': '/content/deepfake-speech-detection/HM-Conformer/data/RIRS_NOISES/simulated_rirs'}}
+DA_wav_aug_list: ['ACN']
+DA_wav_aug_params: {'sr': 16000, 'ACN': {'min_snr_in_db': 10, 'max_snr_in_db': 40, 'min_f_decay': -2.0, 'max_f_decay': 2.0, 'p': 1}, 'HPF': {'min_cutoff_freq': 20.0, 'max_cutoff_freq': 2400.0, 'p': 0.5}, 'LPF': {'min_cutoff_freq': 150.0, 'max_cutoff_freq': 7500.0, 'p': 0.5}, 'GAN': {'min_gain_in_db': -15.0, 'max_gain_in_db': 5.0, 'p': 0.5}}
+DA_frq_p: 1
+DA_frq_mask: True
+DA_frq_mask_max: 20
+lr: 1e-06
+lr_min: 1e-06
+weight_decay: 0.0001
+T_mult: 1

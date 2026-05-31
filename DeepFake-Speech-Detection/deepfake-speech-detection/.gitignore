@@ -1,0 +1,12 @@
+venv/
+MLAAD/
+stt_tts_dataset/
+dataset_audios/
+.DS_Store
+
+*.pyc
+
+raw_data.zip
+
+_pycache_/
+__pycache__/

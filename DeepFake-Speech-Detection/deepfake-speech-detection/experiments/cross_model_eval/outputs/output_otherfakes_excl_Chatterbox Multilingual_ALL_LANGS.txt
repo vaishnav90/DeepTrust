@@ -1,0 +1,65 @@
+COMMAND: /usr/bin/python3 -u /content/deepfake-speech-detection/HM-Conformer/hm_conformer/main.py
+START: 21:15:52
+
+
+============================================================
+HM-Conformer Run Info
+============================================================
+TEST mode:           True
+Selected language:   None
+Selected fake model: None
+Exclude fake models: ['Chatterbox Multilingual']
+labels_path:         /content/deepfake-speech-detection/HM-Conformer/dataset/labels.json
+dataset_root:        /content/deepfake-speech-detection/HM-Conformer/dataset
+path_params:         /content/deepfake-speech-detection/HM-Conformer/results/Multilingual-Domain-Training/HM-Conformer_Chatterbox_Multilingual/models
+load_epoch:          10
+usable_gpu:          0
+world_size:          1
+batch_size (per GPU):120
+============================================================
+
+Excluded fake samples by model_or_speaker in: [Chatterbox Multilingual] (kept all real samples)
+Total entries before fake-model exclusion: 304000
+Total entries after fake-model exclusion:  299000
+====================
+  MultilingualDataset
+Language: All languages
+Fake model filter: (none) | Exclude fake models: Chatterbox Multilingual
+====================
+TRAIN: Real=0, Fake=0, Total=0
+VAL:   Real=0, Fake=0, Total=0
+TEST:  Real=152,000, Fake=147,000, Total=299,000
+Class weights: Real=1.0000, Fake=1.0000
+====================
+
+============================================================
+Test Results
+============================================================
+EER:           27.5939%
+Accuracy:      0.8122
+F1 Score:      0.7643
+Precision:     0.9976
+Recall:        0.6194
+ROC AUC:       0.8090
+Threshold:     1.0000
+
+Confusion Matrix:
+[[151784    216]
+ [ 55942  91058]]
+
+Classification Report:
+              precision    recall  f1-score   support
+
+        Real       0.73      1.00      0.84    152000
+        Fake       1.00      0.62      0.76    147000
+
+    accuracy                           0.81    299000
+   macro avg       0.86      0.81      0.80    299000
+weighted avg       0.86      0.81      0.80    299000
+
+============================================================
+
+DF:  27.593914633421406
+
+END: 21:25:55
+EXIT_CODE: 0

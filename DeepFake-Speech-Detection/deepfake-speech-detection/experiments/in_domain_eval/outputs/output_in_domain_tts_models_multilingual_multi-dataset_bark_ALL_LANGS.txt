@@ -1,0 +1,65 @@
+COMMAND: /usr/bin/python3 -u /content/deepfake-speech-detection/HM-Conformer/hm_conformer/main.py
+START: 06:26:47
+
+
+============================================================
+HM-Conformer Run Info
+============================================================
+TEST mode:           True
+Selected language:   None
+Selected fake model: tts_models_multilingual_multi-dataset_bark
+Exclude fake models: None
+labels_path:         /content/deepfake-speech-detection/HM-Conformer/dataset/labels.json
+dataset_root:        /content/deepfake-speech-detection/HM-Conformer/dataset
+path_params:         /content/deepfake-speech-detection/HM-Conformer/results/Multilingual-Domain-Training/HM-Conformer_tts_models_multilingual_multi_dataset_bark/models
+load_epoch:          10
+usable_gpu:          0
+world_size:          1
+batch_size (per GPU):120
+============================================================
+
+Filtered fake samples by model_or_speaker: 'tts_models_multilingual_multi-dataset_bark' (kept all real samples)
+Total entries before fake-model filtering: 304000
+Total entries after fake-model filtering:  160000
+====================
+  MultilingualDataset
+Language: All languages
+Fake model filter: tts_models_multilingual_multi-dataset_bark
+====================
+TRAIN: Real=0, Fake=0, Total=0
+VAL:   Real=0, Fake=0, Total=0
+TEST:  Real=152,000, Fake=8,000, Total=160,000
+Class weights: Real=1.0000, Fake=1.0000
+====================
+
+============================================================
+Test Results
+============================================================
+EER:           0.8663%
+Accuracy:      0.9914
+F1 Score:      0.9207
+Precision:     0.8576
+Recall:        0.9938
+ROC AUC:       0.9925
+Threshold:     1.0000
+
+Confusion Matrix:
+[[150680   1320]
+ [    50   7950]]
+
+Classification Report:
+              precision    recall  f1-score   support
+
+        Real       1.00      0.99      1.00    152000
+        Fake       0.86      0.99      0.92      8000
+
+    accuracy                           0.99    160000
+   macro avg       0.93      0.99      0.96    160000
+weighted avg       0.99      0.99      0.99    160000
+
+============================================================
+
+DF:  0.8663122661941327
+
+END: 06:30:44
+EXIT_CODE: 0

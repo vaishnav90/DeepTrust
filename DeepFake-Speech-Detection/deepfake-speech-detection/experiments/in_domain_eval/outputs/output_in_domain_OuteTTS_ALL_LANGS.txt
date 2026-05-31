@@ -1,0 +1,64 @@
+COMMAND: /usr/bin/python3 -u /content/deepfake-speech-detection/HM-Conformer/hm_conformer/main.py
+START: 06:15:26
+
+
+============================================================
+HM-Conformer Run Info
+============================================================
+TEST mode:           True
+Selected language:   None
+Selected fake model: OuteTTS
+Exclude fake models: None
+labels_path:         /content/deepfake-speech-detection/HM-Conformer/dataset/labels.json
+dataset_root:        /content/deepfake-speech-detection/HM-Conformer/dataset
+path_params:         /content/deepfake-speech-detection/HM-Conformer/results/Multilingual-Domain-Training/HM-Conformer_OuteTTS/models
+load_epoch:          10
+usable_gpu:          0
+world_size:          1
+batch_size (per GPU):120
+============================================================
+
+Filtered fake samples by model_or_speaker: 'OuteTTS' (kept all real samples)
+Total entries before fake-model filtering: 304000
+Total entries after fake-model filtering:  160000
+====================
+  MultilingualDataset
+Language: All languages
+Fake model filter: OuteTTS
+====================
+TRAIN: Real=0, Fake=0, Total=0
+VAL:   Real=0, Fake=0, Total=0
+TEST:  Real=152,000, Fake=8,000, Total=160,000
+Class weights: Real=1.0000, Fake=1.0000
+====================
+============================================================
+Test Results
+============================================================
+EER:           6.2101%
+Accuracy:      0.9371
+F1 Score:      0.6134
+Precision:     0.4429
+Recall:        0.9974
+ROC AUC:       0.9657
+Threshold:     1.0000
+
+Confusion Matrix:
+[[141962  10038]
+ [    21   7979]]
+
+Classification Report:
+              precision    recall  f1-score   support
+
+        Real       1.00      0.93      0.97    152000
+        Fake       0.44      1.00      0.61      8000
+
+    accuracy                           0.94    160000
+   macro avg       0.72      0.97      0.79    160000
+weighted avg       0.97      0.94      0.95    160000
+
+============================================================
+
+DF:  6.21013493030766
+
+END: 06:19:18
+EXIT_CODE: 0

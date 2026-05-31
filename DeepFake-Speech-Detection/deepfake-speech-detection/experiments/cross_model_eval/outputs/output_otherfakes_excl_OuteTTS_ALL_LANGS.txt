@@ -1,0 +1,65 @@
+COMMAND: /usr/bin/python3 -u /content/deepfake-speech-detection/HM-Conformer/hm_conformer/main.py
+START: 21:40:17
+
+
+============================================================
+HM-Conformer Run Info
+============================================================
+TEST mode:           True
+Selected language:   None
+Selected fake model: None
+Exclude fake models: ['OuteTTS']
+labels_path:         /content/deepfake-speech-detection/HM-Conformer/dataset/labels.json
+dataset_root:        /content/deepfake-speech-detection/HM-Conformer/dataset
+path_params:         /content/deepfake-speech-detection/HM-Conformer/results/Multilingual-Domain-Training/HM-Conformer_OuteTTS/models
+load_epoch:          10
+usable_gpu:          0
+world_size:          1
+batch_size (per GPU):120
+============================================================
+
+Excluded fake samples by model_or_speaker in: [OuteTTS] (kept all real samples)
+Total entries before fake-model exclusion: 304000
+Total entries after fake-model exclusion:  296000
+====================
+  MultilingualDataset
+Language: All languages
+Fake model filter: (none) | Exclude fake models: OuteTTS
+====================
+TRAIN: Real=0, Fake=0, Total=0
+VAL:   Real=0, Fake=0, Total=0
+TEST:  Real=152,000, Fake=144,000, Total=296,000
+Class weights: Real=1.0000, Fake=1.0000
+====================
+
+============================================================
+Test Results
+============================================================
+EER:           15.4698%
+Accuracy:      0.8830
+F1 Score:      0.8733
+Precision:     0.9226
+Recall:        0.8290
+ROC AUC:       0.8816
+Threshold:     1.0000
+
+Confusion Matrix:
+[[141991  10009]
+ [ 24618 119382]]
+
+Classification Report:
+              precision    recall  f1-score   support
+
+        Real       0.85      0.93      0.89    152000
+        Fake       0.92      0.83      0.87    144000
+
+    accuracy                           0.88    296000
+   macro avg       0.89      0.88      0.88    296000
+weighted avg       0.89      0.88      0.88    296000
+
+============================================================
+
+DF:  15.469807314507966
+
+END: 21:50:11
+EXIT_CODE: 0

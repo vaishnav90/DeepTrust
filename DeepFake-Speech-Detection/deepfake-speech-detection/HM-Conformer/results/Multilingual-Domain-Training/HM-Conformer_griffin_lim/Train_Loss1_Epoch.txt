@@ -1,0 +1,10 @@
+[1] Train_Loss1_Epoch: 7.298964623886023
+[2] Train_Loss1_Epoch: 4.349734422637195
+[3] Train_Loss1_Epoch: 2.516641641870896
+[4] Train_Loss1_Epoch: 1.617847549982411
+[5] Train_Loss1_Epoch: 1.113371142303295
+[6] Train_Loss1_Epoch: 0.8543789346490971
+[7] Train_Loss1_Epoch: 0.6876351819924074
+[8] Train_Loss1_Epoch: 0.5788271333218515
+[9] Train_Loss1_Epoch: 0.5096033035478718
+[10] Train_Loss1_Epoch: 0.4530724101397602

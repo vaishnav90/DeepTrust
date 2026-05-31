@@ -1,0 +1,32 @@
+[
+  {
+    "id": "string",
+    "filename": "string.wav",
+    "original_path": "<absolute_or_relative_path_to_audio>",
+    "label": "real",
+    "language": "<iso_639_1_or_locale_code>",
+    "source": {
+      "type": "speaker",
+      "name": "string"
+    },
+    "metadata_files": [
+      "<path_to_metadata_file_1>",
+      "<path_to_metadata_file_2>"
+    ]
+  },
+  {
+    "id": "string",
+    "filename": "string.wav",
+    "original_path": "<absolute_or_relative_path_to_audio>",
+    "label": "fake",
+    "language": "<iso_639_1_or_locale_code>",
+    "source": {
+      "type": "model",
+      "name": "string"
+    },
+    "metadata_files": [
+      "<path_to_metadata_file_1>",
+      "<path_to_metadata_file_2>"
+    ]
+  }
+]

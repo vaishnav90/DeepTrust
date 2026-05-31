@@ -1,0 +1,65 @@
+COMMAND: /usr/bin/python3 -u /content/deepfake-speech-detection/HM-Conformer/hm_conformer/main.py
+START: 22:00:30
+
+
+============================================================
+HM-Conformer Run Info
+============================================================
+TEST mode:           True
+Selected language:   None
+Selected fake model: None
+Exclude fake models: ['griffin_lim']
+labels_path:         /content/deepfake-speech-detection/HM-Conformer/dataset/labels.json
+dataset_root:        /content/deepfake-speech-detection/HM-Conformer/dataset
+path_params:         /content/deepfake-speech-detection/HM-Conformer/results/Multilingual-Domain-Training/HM-Conformer_griffin_lim/models
+load_epoch:          10
+usable_gpu:          0
+world_size:          1
+batch_size (per GPU):120
+============================================================
+
+Excluded fake samples by model_or_speaker in: [griffin_lim] (kept all real samples)
+Total entries before fake-model exclusion: 304000
+Total entries after fake-model exclusion:  296000
+====================
+  MultilingualDataset
+Language: All languages
+Fake model filter: (none) | Exclude fake models: griffin_lim
+====================
+TRAIN: Real=0, Fake=0, Total=0
+VAL:   Real=0, Fake=0, Total=0
+TEST:  Real=152,000, Fake=144,000, Total=296,000
+Class weights: Real=1.0000, Fake=1.0000
+====================
+
+============================================================
+Test Results
+============================================================
+EER:           37.2125%
+Accuracy:      0.7116
+F1 Score:      0.5789
+Precision:     0.9993
+Recall:        0.4075
+ROC AUC:       0.7036
+Threshold:     1.0000
+
+Confusion Matrix:
+[[151961     39]
+ [ 85323  58677]]
+
+Classification Report:
+              precision    recall  f1-score   support
+
+        Real       0.64      1.00      0.78    152000
+        Fake       1.00      0.41      0.58    144000
+
+    accuracy                           0.71    296000
+   macro avg       0.82      0.70      0.68    296000
+weighted avg       0.82      0.71      0.68    296000
+
+============================================================
+
+DF:  37.212468451864986
+
+END: 22:10:29
+EXIT_CODE: 0

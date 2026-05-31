@@ -1,0 +1,65 @@
+COMMAND: /usr/bin/python3 -u /content/deepfake-speech-detection/HM-Conformer/hm_conformer/main.py
+START: 22:30:16
+
+
+============================================================
+HM-Conformer Run Info
+============================================================
+TEST mode:           True
+Selected language:   None
+Selected fake model: None
+Exclude fake models: ['tts_models_multilingual_multi-dataset_xtts_v2']
+labels_path:         /content/deepfake-speech-detection/HM-Conformer/dataset/labels.json
+dataset_root:        /content/deepfake-speech-detection/HM-Conformer/dataset
+path_params:         /content/deepfake-speech-detection/HM-Conformer/results/Multilingual-Domain-Training/HM-Conformer_tts_models_multilingual_multi_dataset_xtts_v2/models
+load_epoch:          10
+usable_gpu:          0
+world_size:          1
+batch_size (per GPU):120
+============================================================
+
+Excluded fake samples by model_or_speaker in: [tts_models_multilingual_multi-dataset_xtts_v2] (kept all real samples)
+Total entries before fake-model exclusion: 304000
+Total entries after fake-model exclusion:  297000
+====================
+  MultilingualDataset
+Language: All languages
+Fake model filter: (none) | Exclude fake models: tts_models_multilingual_multi-dataset_xtts_v2
+====================
+TRAIN: Real=0, Fake=0, Total=0
+VAL:   Real=0, Fake=0, Total=0
+TEST:  Real=152,000, Fake=145,000, Total=297,000
+Class weights: Real=1.0000, Fake=1.0000
+====================
+
+============================================================
+Test Results
+============================================================
+EER:           32.1834%
+Accuracy:      0.7679
+F1 Score:      0.6888
+Precision:     0.9973
+Recall:        0.5261
+ROC AUC:       0.7624
+Threshold:     1.0000
+
+Confusion Matrix:
+[[151790    210]
+ [ 68717  76283]]
+
+Classification Report:
+              precision    recall  f1-score   support
+
+        Real       0.69      1.00      0.81    152000
+        Fake       1.00      0.53      0.69    145000
+
+    accuracy                           0.77    297000
+   macro avg       0.84      0.76      0.75    297000
+weighted avg       0.84      0.77      0.75    297000
+
+============================================================
+
+DF:  32.18343544849542
+
+END: 22:40:02
+EXIT_CODE: 0
